@@ -2,7 +2,6 @@
 
 // @ifdef INCLUDE_DEFINITIONS
 /// <reference path="References/ItemsHoldr-0.2.1.ts" />
-/// <reference path="References/WebAudioAPI.d.ts" />
 /// <reference path="GBSEmulatr.d.ts" />
 // @endif
 
