@@ -16,6 +16,7 @@ declare module GBSEmulatr {
 
     export interface IGBSEmulatrSettings {
         ItemsHolder: ItemsHoldr.IItemsHoldr;
+        Module: IModule;
         library: ILibrary;
         context?: AudioContext;
     }

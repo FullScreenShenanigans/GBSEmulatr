@@ -8,7 +8,8 @@
 
 // @include ../Source/GBSEmulatr.d.ts
 
-// TO REMOVE
+
+// Explanations by Joe!
 
 //library - store a listing of GBS files. Looks like we'll need at least 2. One for the themes, one for 
 //           various pokemon sounds and other misc sound effects.
@@ -28,14 +29,12 @@
 
 //           Of course, since there will be multiple sound files, we'll need....
 
-
-
 //directory - our master lookup table, keyed by song/theme name. Each key will look like (at least, probably
 //           going to have to add more stuff later)
 
 //           "Theme_00_Name" : {
 //                               "gbsSource" : "blue"
-//                               "track_num"  : 0
+//                               "trackNum"  : 0
 //                               }
 
 //           Unfortunately, to save space, I don't think the theme names are included in the .gbs file, so
@@ -50,7 +49,7 @@ module GBSEmulatr {
      * @author "Joe Pringle" <explodingp@gmail.com>
      * @author "Josh Goldberg" <josh@fullscreenmario.com>
      */
-    export class GBSEmulator implements IGBSEmulatr {
+    export class GBSEmulatr implements IGBSEmulatr {
         /**
          * Tracklists and encoded contents of any sound files, keyed by file.
          */
@@ -87,18 +86,33 @@ module GBSEmulatr {
         Module: IModule;
 
         /**
+         * General buffer size for audio node buffers.
+         */
+        private static bufferSize: number = 1024 * 16;
+
+        /**
+         * Maximum value for an integer, used in channel i32 ccals.
+         */
+        private static int16Max: number = Math.pow(2, 32) - 1;
+
+        /**
          * @param {IGBSEmulatrSettings} settings
          */
         constructor(settings: IGBSEmulatrSettings) {
             if (typeof settings.ItemsHolder === "undefined") {
                 throw new Error("No ItemsHolder given to GBSEmulatr.");
             }
+            if (typeof settings.Module === "undefined") {
+                throw new Error("No Module given to GBSEmulatr.");
+            }
             if (typeof settings.library === "undefined") {
                 throw new Error("No library given to GBSEmulatr.");
             }
 
             this.ItemsHolder = settings.ItemsHolder;
+            this.Module = settings.Module;
             this.library = settings.library;
+
             this.context = settings.context || new AudioContext();
 
             // Initially, the directory is empty, and nothing is playing.
@@ -106,49 +120,9 @@ module GBSEmulatr {
 
             this.theme = null;
             this.themeNode = null;
+
             // Decode and ascii-fy all "gbs" library entries.
             this.decodeAll();
-
-            // Create paths between trackName and actual playback information.
-            this.populateDirectory();
-        }
-
-
-        /* 
-        Decode all "gbs" entries in library.
-    
-        Replace each entry with an array of integers 0-255 representing the 
-        decoded ascii contents.
-         */
-
-        private decodeAll() {
-            var i: string;
-
-            for (i in this.library) {
-                this.library[i].gbs = atob(this.library[i].gbs).split("").map(
-                    function (c) {
-                        return c.charCodeAt(0);
-                    }
-                    );
-            }
-        }
-
-        /*
-        Once all "gbs" entries have been decoded, scan through the library and 
-        store relevant playback information in the directory, keyed by trackName.
-        */
-        private populateDirectory() {
-            var track: string,
-                i: string;
-
-            for (i in this.library) {
-                for (track in this.library[i].tracks) {
-                    this.directory[track] = {
-                        "gbsSource": i,
-                        "track_num": this.library[i].tracks[track]
-                    };
-                }
-            }
         }
 
 
@@ -246,7 +220,7 @@ module GBSEmulatr {
 
             var folder = this.directory[track].gbsSource,
                 payload = this.library[folder].gbs,
-                subtune = this.directory[track].track_num,
+                subtune = this.directory[track].trackNum,
                 // Required for libgme.js
                 ref = this.Module.allocate(1, "i32", this.Module.ALLOC_STATIC),
                 emu,
@@ -256,8 +230,7 @@ module GBSEmulatr {
                 "gme_open_data",
                 "number",
                 ["array", "number", "number", "number"],
-                [payload, payload.length, ref, this.context.sampleRate]
-                )) {
+                [payload, payload.length, ref, this.context.sampleRate])) {
                 throw new Error("Could not call gme_open_data.");
             }
 
@@ -272,6 +245,10 @@ module GBSEmulatr {
             this.theme = track;
             node = this.playSong(emu);
         }
+
+
+        /* Internal playing
+        */
 
         /** 
          * Private function that ACTUALLY plays the song, in user's current context.
@@ -296,7 +273,6 @@ module GBSEmulatr {
         private onNodeAudioProcess(node, emu, e) {
             var bufferSize: number = 1024 * 16,
                 buffer = this.Module.allocate(bufferSize * 2, "i32", this.Module.ALLOC_STATIC),
-                INT16_MAX = Math.pow(2, 32) - 1,
                 channels,
                 error,
                 temp: number,
@@ -327,11 +303,48 @@ module GBSEmulatr {
                     temp = (
                         buffer
                         + (i * e.outputBuffer.numberOfChannels * 2)
-                        + (n * 4)
-                        );
-                    channels[n][i] = this.Module.getValue(temp, "i32") / INT16_MAX;
+                        + (n * 4));
+                    channels[n][i] = this.Module.getValue(temp, "i32") / GBSEmulatr.int16Max;
                 }
             }
+        }
+
+
+        /* Base loading
+        */
+
+        /**
+         * Decodes all "gbs" entries in a library. Each entry is replaced with an
+         * array of Integers 0-255 representing the decoded ASCII contents. Those
+         * are referenced by track name in the main GBSEmulatr directory.
+         */
+        private decodeAll() {
+            var i: string,
+                j: string;
+
+            for (i in this.library) {
+                if (!this.library.hasOwnProperty(i)) {
+                    continue;
+                }
+
+                this.library[i].gbs = atob(this.library[i].gbs)
+                    .split("")
+                    .map(this.firstCharacterCode);
+
+                for (j in this.library[i].tracks) {
+                    this.directory[j] = {
+                        "gbsSource": i,
+                        "trackNum": this.library[i].tracks[j]
+                    };
+                }
+            }
+        }
+
+        /**
+         * Helper utility that just returns the first character's code in a String.
+         */
+        private firstCharacterCode(str: string): number {
+            return str.charCodeAt(0);
         }
     }
 }
