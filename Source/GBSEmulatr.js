@@ -193,22 +193,25 @@ var GBSEmulatr;
          * are referenced by track name in the main GBSEmulatr directory.
          */
         GBSEmulatr.prototype.decodeAll = function () {
-            var i, j;
+            var tracks, i, j;
             for (i in this.library) {
                 if (!this.library.hasOwnProperty(i)) {
                     continue;
                 }
                 this.library[i].gbsDecoded = atob(this.library[i].gbs).split("").map(this.getFirstCharacterCode);
-                for (j in this.library[i].tracks) {
-                    this.directory[j] = {
-                        "gbsSource": i,
-                        "trackNum": this.library[i].tracks[j]
-                    };
+                tracks = this.library[i].tracks;
+                for (j in tracks) {
+                    if (tracks.hasOwnProperty(j)) {
+                        this.directory[j] = {
+                            "gbsSource": i,
+                            "trackNum": tracks[j]
+                        };
+                    }
                 }
             }
         };
         /**
-         * Helper utility that just returns the first character's code in a String.
+         * Helper utility to return a String's first character's code.
          */
         GBSEmulatr.prototype.getFirstCharacterCode = function (str) {
             return str.charCodeAt(0);

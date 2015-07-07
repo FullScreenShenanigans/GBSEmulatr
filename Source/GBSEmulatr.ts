@@ -319,7 +319,8 @@ module GBSEmulatr {
          * are referenced by track name in the main GBSEmulatr directory.
          */
         private decodeAll() {
-            var i: string,
+            var tracks,
+                i: string,
                 j: string;
 
             for (i in this.library) {
@@ -331,17 +332,21 @@ module GBSEmulatr {
                     .split("")
                     .map(this.getFirstCharacterCode);
 
-                for (j in this.library[i].tracks) {
-                    this.directory[j] = {
-                        "gbsSource": i,
-                        "trackNum": this.library[i].tracks[j]
-                    };
+                tracks = this.library[i].tracks;
+
+                for (j in tracks) {
+                    if (tracks.hasOwnProperty(j)) {
+                        this.directory[j] = {
+                            "gbsSource": i,
+                            "trackNum": tracks[j]
+                        };
+                    }
                 }
             }
         }
 
         /**
-         * Helper utility that just returns the first character's code in a String.
+         * Helper utility to return a String's first character's code.
          */
         private getFirstCharacterCode(str: string): number {
             return str.charCodeAt(0);
