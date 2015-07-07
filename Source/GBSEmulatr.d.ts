@@ -1,6 +1,23 @@
 declare module GBSEmulatr {
     export interface ILibrary {
+        [i: string]: ILibraryObject;
+    }
 
+    export interface ILibraryObject {
+        gbs: string;
+        gbsDecoded: number[];
+        tracks: {
+            [i: string]: number;
+        };
+    }
+
+    export interface IDirectory {
+        [i: string]: IDirectoryObject;
+    }
+
+    export interface IDirectoryObject {
+        gbsSource: string;
+        trackNum: number;
     }
 
     /**

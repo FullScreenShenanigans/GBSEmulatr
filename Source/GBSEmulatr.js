@@ -6,7 +6,7 @@
 // @endif
 // @include ../Source/GBSEmulatr.d.ts
 // Explanations by Joe!
-//library - store a listing of GBS files. Looks like we'll need at least 2. One for the themes, one for 
+// library - store a listing of GBS files. Looks like we'll need at least 2. One for the themes, one for 
 //           various pokemon sounds and other misc sound effects.
 //           In audio.js the gbs data will be stored as a base64 encoded string. Later on, however, we'll
 //           decode that and ascii-fy each character to play nicely with the player. 
@@ -16,7 +16,7 @@
 //                   play_music_data(decodedPayload, 10);
 //           which our music player understands!
 //           Of course, since there will be multiple sound files, we'll need....
-//directory - our master lookup table, keyed by song/theme name. Each key will look like (at least, probably
+// directory - our master lookup table, keyed by song/theme name. Each key will look like (at least, probably
 //           going to have to add more stuff later)
 //           "Theme_00_Name" : {
 //                               "gbsSource" : "blue"
@@ -133,7 +133,7 @@ var GBSEmulatr;
                 this.themeNode.disconnect();
                 this.themeNode = null;
             }
-            var folder = this.directory[track].gbsSource, payload = this.library[folder].gbs, subtune = this.directory[track].trackNum, 
+            var folder = this.directory[track].gbsSource, payload = this.library[folder].gbsDecoded, subtune = this.directory[track].trackNum, 
             // Required for libgme.js
             ref = this.Module.allocate(1, "i32", this.Module.ALLOC_STATIC), emu, node;
             if (this.Module.ccall("gme_open_data", "number", ["array", "number", "number", "number"], [payload, payload.length, ref, this.context.sampleRate])) {
@@ -198,7 +198,7 @@ var GBSEmulatr;
                 if (!this.library.hasOwnProperty(i)) {
                     continue;
                 }
-                this.library[i].gbs = atob(this.library[i].gbs).split("").map(this.firstCharacterCode);
+                this.library[i].gbsDecoded = atob(this.library[i].gbs).split("").map(this.getFirstCharacterCode);
                 for (j in this.library[i].tracks) {
                     this.directory[j] = {
                         "gbsSource": i,
@@ -210,7 +210,7 @@ var GBSEmulatr;
         /**
          * Helper utility that just returns the first character's code in a String.
          */
-        GBSEmulatr.prototype.firstCharacterCode = function (str) {
+        GBSEmulatr.prototype.getFirstCharacterCode = function (str) {
             return str.charCodeAt(0);
         };
         /**

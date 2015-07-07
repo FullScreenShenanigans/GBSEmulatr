@@ -11,7 +11,7 @@
 
 // Explanations by Joe!
 
-//library - store a listing of GBS files. Looks like we'll need at least 2. One for the themes, one for 
+// library - store a listing of GBS files. Looks like we'll need at least 2. One for the themes, one for 
 //           various pokemon sounds and other misc sound effects.
 
 //           In audio.js the gbs data will be stored as a base64 encoded string. Later on, however, we'll
@@ -29,7 +29,7 @@
 
 //           Of course, since there will be multiple sound files, we'll need....
 
-//directory - our master lookup table, keyed by song/theme name. Each key will look like (at least, probably
+// directory - our master lookup table, keyed by song/theme name. Each key will look like (at least, probably
 //           going to have to add more stuff later)
 
 //           "Theme_00_Name" : {
@@ -58,12 +58,12 @@ module GBSEmulatr {
         /**
          * Master lookup table, keyed by trackName.
          */
-        directory;
+        directory: IDirectory;
 
         /**
          * The name of the currently playing theme.
          */
-        theme;
+        theme: string;
 
         /**
          * The currently playing theme node.
@@ -219,7 +219,7 @@ module GBSEmulatr {
             }
 
             var folder = this.directory[track].gbsSource,
-                payload = this.library[folder].gbs,
+                payload = this.library[folder].gbsDecoded,
                 subtune = this.directory[track].trackNum,
                 // Required for libgme.js
                 ref = this.Module.allocate(1, "i32", this.Module.ALLOC_STATIC),
@@ -327,9 +327,9 @@ module GBSEmulatr {
                     continue;
                 }
 
-                this.library[i].gbs = atob(this.library[i].gbs)
+                this.library[i].gbsDecoded = atob(this.library[i].gbs)
                     .split("")
-                    .map(this.firstCharacterCode);
+                    .map(this.getFirstCharacterCode);
 
                 for (j in this.library[i].tracks) {
                     this.directory[j] = {
@@ -343,7 +343,7 @@ module GBSEmulatr {
         /**
          * Helper utility that just returns the first character's code in a String.
          */
-        private firstCharacterCode(str: string): number {
+        private getFirstCharacterCode(str: string): number {
             return str.charCodeAt(0);
         }
     }
