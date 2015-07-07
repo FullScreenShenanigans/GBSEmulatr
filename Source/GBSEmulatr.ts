@@ -50,7 +50,7 @@ module GBSEmulatr {
      * @author "Joe Pringle" <explodingp@gmail.com>
      * @author "Josh Goldberg" <josh@fullscreenmario.com>
      */
-    export class GBSEmulator {
+    export class GBSEmulator implements IGBSEmulatr {
         /**
          * Tracklists and encoded contents of any sound files, keyed by file.
          */
