@@ -68,7 +68,7 @@ module GBSEmulatr {
         /**
          * The currently playing theme node.
          */
-        themeNode;
+        themeNode: ScriptProcessorNode;
 
         /**
          * The AudioContext governing audio output.
@@ -118,9 +118,6 @@ module GBSEmulatr {
             // Initially, the directory is empty, and nothing is playing.
             this.directory = {};
 
-            this.theme = null;
-            this.themeNode = null;
-
             // Decode and ascii-fy all "gbs" library entries.
             this.decodeAll();
         }
@@ -132,36 +129,29 @@ module GBSEmulatr {
         /**
          * 
          */
-        getLibrary() {
+        getLibrary(): ILibrary {
             return this.library;
         }
 
         /**
          * 
          */
-        getDirectory() {
+        getDirectory(): IDirectory {
             return this.directory;
         }
 
         /**
          * 
          */
-        getTheme() {
+        getTheme(): string {
             return this.theme;
         }
 
         /**
          * 
          */
-        getVolume() {
-            return this.ItemsHolder.getItem("volume");
-        }
-
-        /**
-         * 
-         */
-        getMuted() {
-
+        getThemeNode(): ScriptProcessorNode {
+            return this.themeNode;
         }
 
         /**
@@ -171,6 +161,48 @@ module GBSEmulatr {
             return this.context;
         }
 
+        /**
+         * 
+         */
+        getItemsHolder(): ItemsHoldr.IItemsHoldr {
+            return this.ItemsHolder;
+        }
+
+        /**
+         * 
+         */
+        getModule(): IModule {
+            return this.Module;
+        }
+
+        /**
+         * 
+         */
+        getBufferSize(): number {
+            return GBSEmulatr.bufferSize;
+        }
+
+        /**
+         * 
+         */
+        getInt16Max(): number {
+            return GBSEmulatr.int16Max;
+        }
+
+        /**
+         * 
+         */
+        getVolume(): number {
+            return this.ItemsHolder.getItem("volume");
+        }
+
+        /**
+         * 
+         */
+        getMuted(): number {
+            return this.ItemsHolder.getItem("muted");
+        }
+
 
         /* Audio functionality
         */
@@ -178,32 +210,35 @@ module GBSEmulatr {
         /**
          * 
          */
-        stop() {
-            if (this.themeNode) {
-                this.themeNode.disconnect();
-                this.themeNode = null;
+        stop(): void {
+            if (!this.themeNode) {
+                return;
             }
+
+            this.themeNode.disconnect();
+            this.themeNode = undefined;
+            this.theme = undefined;
         }
 
         /**
          * 
          */
-        clearAll() {
-
+        clearAll(): void {
+            throw new Error("Not implemented.");
         }
 
         /**
          * 
          */
-        setMutedOn() {
-
+        setMutedOn(): void {
+            throw new Error("Not implemented.");
         }
 
         /**
          * 
          */
-        setMutedOff() {
-
+        setMutedOff(): void {
+            throw new Error("Not implemented.");
         }
 
         /**
@@ -211,20 +246,18 @@ module GBSEmulatr {
          * 
          * @example GBSEmulator.play("openingTheme");
          */
-        play(track) {
-            // @TODO proper stop function
+        play(track: string): void {
             if (this.themeNode) {
-                this.themeNode.disconnect();
-                this.themeNode = null;
+                this.stop();
             }
 
-            var folder = this.directory[track].gbsSource,
-                payload = this.library[folder].gbsDecoded,
-                subtune = this.directory[track].trackNum,
+            var folder: string = this.directory[track].gbsSource,
+                payload: number[] = this.library[folder].gbsDecoded,
+                subtune: number = this.directory[track].trackNum,
                 // Required for libgme.js
-                ref = this.Module.allocate(1, "i32", this.Module.ALLOC_STATIC),
-                emu,
-                node;
+                ref: number = this.Module.allocate(1, "i32", this.Module.ALLOC_STATIC),
+                emu: number,
+                node: ScriptProcessorNode;
 
             if (this.Module.ccall(
                 "gme_open_data",
@@ -243,7 +276,8 @@ module GBSEmulatr {
 
             // Actually play the track.
             this.theme = track;
-            node = this.playSong(emu);
+
+            this.themeNode = this.playSong(emu);
         }
 
 
@@ -253,56 +287,46 @@ module GBSEmulatr {
         /** 
          * Private function that ACTUALLY plays the song, in user's current context.
          */
-        private playSong(emu) {
-            var bufferSize = 1024 * 16,
-                inputs = 2,
-                outputs = 2,
-                node, temp, i, n;
-
-            node = this.context.createScriptProcessor(bufferSize, inputs, outputs);
-
-            this.themeNode = node;
+        private playSong(emu: number): ScriptProcessorNode {
+            var node: ScriptProcessorNode = this.context.createScriptProcessor(GBSEmulatr.bufferSize, 2, 2);
 
             node.onaudioprocess = this.onNodeAudioProcess.bind(this, node, emu);
-
             node.connect(this.context.destination)
 
             return node;
         }
 
-        private onNodeAudioProcess(node, emu, e) {
-            var bufferSize: number = 1024 * 16,
-                buffer = this.Module.allocate(bufferSize * 2, "i32", this.Module.ALLOC_STATIC),
-                channels,
-                error,
+        private onNodeAudioProcess(node, emu, event: AudioProcessingEvent) {
+            var buffer: number = this.Module.allocate(GBSEmulatr.bufferSize * 2, "i32", this.Module.ALLOC_STATIC),
+                channels: Float32Array[],
+                error: Error,
                 temp: number,
                 i: number,
                 n: number;
 
             if (this.Module.ccall("gme_track_ended", "number", ["number"], [emu]) === 1) {
-                // Can put any 'end-of-song' event handlers here, once 
-                // GBSEmulatr is more fleshed out.
+                // Can put any 'end-of-song' event handlers here, once GBSEmulatr is more fleshed out.
                 node.disconnect();
                 this.theme = null;
                 return;
             }
 
             channels = [
-                e.outputBuffer.getChannelData(0),
-                e.outputBuffer.getChannelData(1)
+                event.outputBuffer.getChannelData(0),
+                event.outputBuffer.getChannelData(1)
             ];
 
-            error = this.Module.ccall("gme_play", "number", ["number", "number", "number"], [emu, bufferSize * 2, buffer]);
+            error = this.Module.ccall("gme_play", "number", ["number", "number", "number"], [emu, GBSEmulatr.bufferSize * 2, buffer]);
 
             if (error) {
                 throw new Error("Could not call gme_play.");
             }
 
-            for (i = 0; i < bufferSize; i++) {
-                for (n = 0; n < e.outputBuffer.numberOfChannels; n++) {
+            for (i = 0; i < GBSEmulatr.bufferSize; i += 1) {
+                for (n = 0; n < event.outputBuffer.numberOfChannels; n++) {
                     temp = (
                         buffer
-                        + (i * e.outputBuffer.numberOfChannels * 2)
+                        + (i * event.outputBuffer.numberOfChannels * 2)
                         + (n * 4));
                     channels[n][i] = this.Module.getValue(temp, "i32") / GBSEmulatr.int16Max;
                 }
@@ -318,8 +342,8 @@ module GBSEmulatr {
          * array of Integers 0-255 representing the decoded ASCII contents. Those
          * are referenced by track name in the main GBSEmulatr directory.
          */
-        private decodeAll() {
-            var tracks,
+        private decodeAll(): void {
+            var tracks: { [i: string]: number },
                 i: string,
                 j: string;
 

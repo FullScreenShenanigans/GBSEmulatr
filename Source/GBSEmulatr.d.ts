@@ -26,9 +26,9 @@ declare module GBSEmulatr {
      */
     export interface IModule {
         ALLOC_STATIC;
-        allocate;
+        allocate(slab: number, types: string, allocator: number, ptr?: any): number;
         ccall;
-        getValue;
+        getValue(ptr: number, type: string, noSafe?: boolean): number;
     }
 
     export interface IGBSEmulatrSettings {
