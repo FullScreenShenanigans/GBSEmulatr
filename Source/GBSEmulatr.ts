@@ -51,6 +51,16 @@ module GBSEmulatr {
      */
     export class GBSEmulatr implements IGBSEmulatr {
         /**
+         * General buffer size for audio node buffers.
+         */
+        private static bufferSize: number = 1024 * 16;
+
+        /**
+         * Maximum value for an integer, used in channel i32 ccals.
+         */
+        private static int16Max: number = Math.pow(2, 32) - 1;
+
+        /**
          * Tracklists and encoded contents of any sound files, keyed by file.
          */
         library: ILibrary;
@@ -84,16 +94,6 @@ module GBSEmulatr {
          * The ASM generated module for calling C code.
          */
         Module: IModule;
-
-        /**
-         * General buffer size for audio node buffers.
-         */
-        private static bufferSize: number = 1024 * 16;
-
-        /**
-         * Maximum value for an integer, used in channel i32 ccals.
-         */
-        private static int16Max: number = Math.pow(2, 32) - 1;
 
         /**
          * @param {IGBSEmulatrSettings} settings
@@ -157,7 +157,7 @@ module GBSEmulatr {
         /**
          * 
          */
-        getContext() {
+        getContext(): AudioContext {
             return this.context;
         }
 
@@ -256,8 +256,7 @@ module GBSEmulatr {
                 subtune: number = this.directory[track].trackNum,
                 // Required for libgme.js
                 ref: number = this.Module.allocate(1, "i32", this.Module.ALLOC_STATIC),
-                emu: number,
-                node: ScriptProcessorNode;
+                emu: number;
 
             if (this.Module.ccall(
                 "gme_open_data",
@@ -291,12 +290,12 @@ module GBSEmulatr {
             var node: ScriptProcessorNode = this.context.createScriptProcessor(GBSEmulatr.bufferSize, 2, 2);
 
             node.onaudioprocess = this.onNodeAudioProcess.bind(this, node, emu);
-            node.connect(this.context.destination)
+            node.connect(this.context.destination);
 
             return node;
         }
 
-        private onNodeAudioProcess(node, emu, event: AudioProcessingEvent) {
+        private onNodeAudioProcess(node: ScriptProcessorNode, emu: number, event: AudioProcessingEvent): void {
             var buffer: number = this.Module.allocate(GBSEmulatr.bufferSize * 2, "i32", this.Module.ALLOC_STATIC),
                 channels: Float32Array[],
                 error: Error,
