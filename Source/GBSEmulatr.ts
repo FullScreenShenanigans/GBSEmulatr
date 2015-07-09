@@ -241,6 +241,13 @@ module GBSEmulatr {
         }
 
         /**
+         * 
+         */
+        toggleMuted(): void {
+            throw new Error("Not implemented.");
+        }
+
+        /**
          * Plays a sound or theme, keyed by track name.
          * 
          * @example GBSEmulator.play("openingTheme");
